@@ -10,6 +10,7 @@ module control(
     input  [31:0] immU,
     input  [31:0] immJ,
     input         shamt,
+    input         rst,
 
     output reg [4:0]  alu_ctrl,//ALU控制信号
     output reg alu_src,//ALU的src2是取立即数还是取rs2中的数(1是取立即数，因为1很像i)
@@ -29,401 +30,63 @@ module control(
 
 );
 
-    always@(clk)
+    reg [2:0] control_status;
+
+    always@(posedge rst)
     begin
-        reg_wr_en = 1'b0;
-        wr_en = 1'b0;
-        jump      = 1'b0;
-        reg_rst   = 1'b0;
-        b_pc      = 1'b0;
-        wr_en     = 1'b0;
-        rd_en     = 1'b0;
-        case(opcode)
-          7'b0110011://R型指令？
-          begin
-            case(func3)
-            3'b000: 
-            begin
-                if(func7==7'b0000000)//R add
-                begin
-                    alu_ctrl      = `ALU_ADD; 
-                    reg_wr_en     = 1'b1;
-                    alu_src       = 1'b0;
-                    reg_data_from = 1'b0;
-                end
-                if(func7==7'b0100000)// R sub
-                begin
-                    alu_ctrl      = `ALU_SUB;
-                    reg_wr_en     = 1'b1;
-                    alu_src       = 1'b0;
-                    reg_data_from = 1'b0;
-                end
-            end
-            3'b001:// R sll
-            begin
-                alu_ctrl      = `ALU_LOGIC_LEFT_MOVE;
-                reg_wr_en     = 1'b1;
-                alu_src       = 1'b0;
-                reg_data_from = 1'b0;
-            end
-            3'b010:// R slt
-            begin
-                alu_ctrl      = `ALU_COMPARE_SMA_ZERO;
-                reg_wr_en     = 1'b1;
-                alu_src       = 1'b0;
-                reg_data_from = 1'b0;
-                reg_rst       = 1'b1;
-            end
-            3'b011:// R sltu
-            begin
-                alu_ctrl      = `ALU_COMPARE_UNS_SMA_ZERO;
-                reg_wr_en     = 1'b1;
-                alu_src       = 1'b0;
-                reg_data_from = 1'b0;
-                reg_rst       = 1'b1;
-            end
-            3'b100:// R xor
-            begin
-                alu_ctrl      = `ALU_XOR;
-                reg_wr_en     = 1'b1;
-                alu_src       = 1'b0;
-                reg_data_from = 1'b0;
-            end
-            3'b101:
-            begin
-                if(func7==7'b0000000)//R srl
-                begin
-                    alu_ctrl      = `ALU_LOGIC_RIGHT_MOVE;
-                    reg_wr_en     = 1'b1;
-                    alu_src       = 1'b0;
-                    reg_data_from = 1'b0;
-                end
-                if(func7==7'b0100000)//R sra
-                begin
-                    alu_ctrl      = `ALU_ARI_RIGHT_MOVE;
-                    reg_wr_en     = 1'b1;
-                    alu_src       = 1'b0;
-                    reg_data_from = 1'b0;
-                end
-            end
-            3'b110://R or
-            begin
-                alu_ctrl          = `ALU_OR;
-                reg_wr_en         = 1'b1;
-                alu_src           = 1'b0;
-                reg_data_from     = 1'b0;
-            end
-            3'b111://R and
-            begin
-                alu_ctrl          = `ALU_AND;
-                reg_wr_en         = 1'b1;
-                alu_src           = 1'b0;
-                reg_data_from     = 1'b0;
-            end
-
-            endcase
-          end
-          
-          7'b0110111: //U lui
-          begin
-            alu_ctrl              = `ALU_LOGIC_LEFT_MOVE;
-            reg_wr_en             = 1'b1;
-            alu_src               = 1'b1;
-            reg_data_from         = 1'b0;
-            immwho                = `UimmU;
-          end
-
-          7'b0010111: //U auipc
-          begin
-            alu_ctrl              = `ALU_auipc_LEFT_MOVE_ADD;
-            alu_src               = 1'b1;
-            immwho                = `UimmU;
-            reg_wr_en             = 1'b1;
-            reg_data_from         = 1'b0;
-          end
-
-          7'b1101111: //J jal
-          begin
-            alu_ctrl              = `ALU_ADD;
-            alu_src               = 1'b1;
-            immwho                = `UimmJ;
-            reg_wr_en             = 1'b1;
-            reg_data_from         = 1'b0;
-            jump                  = 1'b1;
-          end
-
-          7'b1100111: //I jalr
-          begin
-            if(func3 == 3'b000)
-            begin
-                alu_ctrl          = `ALU_ADD;
-                alu_src           = 1'b1;
-                immwho            = `UimmI;
-                reg_wr_en         = 1'b1;
-                reg_data_from     = 1'b0;
-                jump              = 1'b1;
-            end
-          end
-
-          7'b1100011:
-          begin
-            case(func3)
-              
-              3'b000://B beq
-              begin
-                alu_ctrl          = `ALU_COMPARE_E_ZERO;
-                alu_src           = 1'b0;
-                jump              = 1'b1;
-                b_pc              = 1'b1;
-              end
-
-              3'b001://B bne
-              begin
-                alu_ctrl          = `ALU_COMPARE_UNE_ZERO;
-                alu_src           = 1'b0;
-                jump              = 1'b1;
-                b_pc              = 1'b1;
-              end
-
-              3'b100://B blt
-              begin
-                alu_ctrl          = `ALU_COMPARE_SMA_ZERO;
-                alu_src           = 1'b0;
-                jump              = 1'b1;
-                b_pc              = 1'b1;
-              end
-
-              3'b101://B bge
-              begin
-                alu_ctrl          = `ALU_COMPARE_BIGE_ZERO;
-                alu_src           = 1'b0;
-                jump              = 1'b1;
-                b_pc              = 1'b1;
-              end
-
-              3'b110://B bltu
-              begin
-                alu_ctrl          = `ALU_COMPARE_UNS_SMA_ZERO;
-                alu_src           = 1'b0;
-                jump              = 1'b1;
-                b_pc              = 1'b1;
-              end
-
-              3'b111://B bgeu
-              begin
-                alu_ctrl          = `ALU_COMPARE_UNS_BIGE_ZERO;
-                alu_src           = 1'b0;
-                jump              = 1'b1;
-                b_pc              = 1'b1;
-              end
-
-            endcase
-          end
-
-          7'b0000011:
-          begin
-            case(func3)
-
-              3'b000://I lb
-              begin
-                alu_ctrl          = `ALU_ADD;
-                alu_src           = 1'b1;
-                immwho            = `UimmI;
-                reg_wr_en         = 1'b1;
-                reg_data_from     = 1'b1;
-                rd_en             = 1'b1;
-                sign_ext          = 1'b1;
-                size              = `byte;
-              end
-
-              3'b001://I lh
-              begin
-                alu_ctrl          = `ALU_ADD;
-                alu_src           = 1'b1;
-                immwho            = `UimmI;
-                reg_wr_en         = 1'b1;
-                reg_data_from     = 1'b1;
-                rd_en             = 1'b1;
-                sign_ext          = 1'b1;
-                size              = `halfword;
-              end
-
-              3'b010://I lw
-              begin
-                alu_ctrl          = `ALU_ADD;
-                alu_src           = 1'b1;
-                immwho            = `UimmI;
-                reg_wr_en         = 1'b1;
-                reg_data_from     = 1'b1;
-                rd_en             = 1'b1;
-                sign_ext          = 1'b1;
-                size              = `word;
-              end
-
-              3'b100://I lbu
-              begin
-                alu_ctrl          = `ALU_ADD;
-                alu_src           = 1'b1;
-                immwho            = `UimmI;
-                reg_wr_en         = 1'b1;
-                reg_data_from     = 1'b1;
-                rd_en             = 1'b1;
-                sign_ext          = 1'b0;
-                size              = `byte;
-              end
-
-              3'b101://I lhu
-              begin
-                alu_ctrl          = `ALU_ADD;
-                alu_src           = 1'b1;
-                immwho            = `UimmI;
-                reg_wr_en         = 1'b1;
-                reg_data_from     = 1'b1;
-                rd_en             = 1'b1;
-                sign_ext          = 1'b0;
-                size              = `halfword;
-              end
-
-            endcase
-          end
-
-          7'b0100011:
-          begin
-            case(func3)
-               
-              3'b000://S sb
-              begin
-                alu_ctrl          = `ALU_ADD;
-                alu_src           = 1'b1;
-                immwho            = `UimmS;
-                wr_en             = 1'b1;
-                size              = `byte;
-              end 
-
-              3'b001://S sh
-              begin
-                alu_ctrl          = `ALU_ADD;
-                alu_src           = 1'b1;
-                immwho            = `UimmS;
-                wr_en             = 1'b1;
-                size              = `halfword;
-              end
-
-              3'b010://S sw
-              begin
-                alu_ctrl          = `ALU_ADD;
-                alu_src           = 1'b1;
-                immwho            = `UimmS;
-                wr_en             = 1'b1;
-                size              = `word;
-              end
-
-            endcase
-          end
-
-          7'b0010011:
-          begin
-            case(func3)
-
-              3'b000://I addi
-              begin
-                alu_ctrl         = `ALU_ADD;
-                alu_src          = 1'b1;
-                immwho           = `UimmI;
-                reg_wr_en        = 1'b1;
-                reg_data_from    = 1'b0;
-              end
-
-              3'b010://I slti
-              begin
-                alu_ctrl         = `ALU_COMPARE_SMA_ZERO;
-                alu_src          = 1'b1;
-                immwho           = `UimmI;
-                reg_wr_en        = 1'b1;
-                reg_data_from    = 1'b0;
-                reg_rst          = 1'b1;
-              end
-
-              3'b011://I sltiu
-              begin
-                alu_ctrl         = `ALU_COMPARE_UNS_SMA_ZERO;
-                alu_src          = 1'b1;
-                immwho           = `UimmI;
-                reg_wr_en        = 1'b1;
-                reg_data_from    = 1'b0;
-                reg_rst          = 1'b1;
-              end
-
-              3'b100://I xori
-              begin
-                alu_ctrl         = `ALU_XOR;
-                alu_src          = 1'b1;
-                immwho           = `UimmI;
-                reg_wr_en        = 1'b1;
-                reg_data_from    = 1'b0;
-              end
-
-              3'b110://I ori
-              begin
-                alu_ctrl         = `ALU_OR;
-                alu_src          = 1'b1;
-                immwho           = `UimmI;
-                reg_wr_en        = 1'b1;
-                reg_data_from    = 1'b0;
-              end
-
-              3'b111://I andi
-              begin
-                alu_ctrl         = `ALU_AND;
-                alu_src          = 1'b1;
-                immwho           = `UimmI;
-                reg_wr_en        = 1'b1;
-                reg_data_from    = 1'b0;
-              end
-
-              3'b001://I slli
-              begin
-                if(~shamt)
-                begin
-                 alu_ctrl         = `ALU_LOGIC_LEFT_MOVE;
-                 alu_src          = 1'b1;
-                 immwho           = `UimmI;
-                 reg_wr_en        = 1'b1;
-                 reg_data_from    = 1'b0;
-                end
-              end
-
-              3'b101:
-              begin
-                if(func7==7'b0000000)//I srli
-                begin
-                 if(~shamt)
-                 begin
-                   alu_ctrl        = `ALU_LOGIC_RIGHT_MOVE;
-                   alu_src         = 1'b1;
-                   immwho          = `UimmI;
-                   reg_wr_en       = 1'b1;
-                   reg_data_from   = 1'b0;
-                 end
-                end
-                if(func7==7'b0100000)//I srai
-                begin
-                  if(~shamt)
-                  begin
-                    alu_ctrl       = `ALU_ARI_RIGHT_MOVE;
-                    alu_src        = 1'b1;
-                    immwho         = `UimmI;
-                    reg_wr_en      = 1'b1;
-                    reg_data_from  = 1'b0;
-                  end
-                end
-              end
-
-            endcase
-          end
-
-        endcase
+      control_status = 3'b000;
     end
+
+                            //R add                                                         J jal                   I jalr                                   I lb                                     I lh                                     I lw                                     I lbu                                    I lhu                                    S sb                                     S sh                                     S sw                                     I addi
+    assign alu_ctrl = ((opcode==7'b0110011 && func3==3'b000 && func7==7'b0000000) || (opcode==7'b1101111) || (opcode==7'b1100111 && func3==3'b000) || (opcode==7'b0000011 && func3==3'b000) || (opcode==7'b0000011 && func3==3'b001) || (opcode==7'b0000011 && func3==3'b010) || (opcode==7'b0000011 && func3==3'b100) || (opcode==7'b0000011 && func3==3'b101) || (opcode==7'b0100011 && func3==3'b000) || (opcode==7'b0100011 && func3==3'b001) || (opcode==7'b0100011 && func3==3'b010) || (opcode==7'b0010011 && func3==3'b000))? `ALU_ADD:
+                      (opcode==7'b0110011 && func3==3'b000 && func7==7'b0100000)? `ALU_SUB://R sub
+                      ((opcode==7'b0110011 && func3==3'b001) || (opcode==7'b0110111) || (opcode==7'b0010011 && func3==3'b001))? `ALU_LOGIC_LEFT_MOVE://R sll U lui I slli
+                      ((opcode==7'b0110011 && func3==3'b010) || (opcode==7'b1100011 && func3==3'b100) || (opcode==7'b0010011 && func3==3'b010))? `ALU_COMPARE_SMA_ZERO://R slt B blt I slti
+                      ((opcode==7'b0110011 && func3==3'b011) || (opcode==7'b1100011 && func3==3'b110) || (opcode==7'b0010011 && func3==3'b011))? `ALU_COMPARE_UNS_SMA_ZERO://R sltu B bltu I sltiu
+                      ((opcode==7'b0110011 && func3==3'b100) || (opcode==7'b0010011 && func3==3'b100))? `ALU_XOR://R xor I xori
+                      ((opcode==7'b0110011 && func3==3'b101 && func7 == 7'b0000000) || (opcode==7'b0010011 && func3==3'b101 && func7==7'b0000000))? `ALU_LOGIC_RIGHT_MOVE://R srl I srli
+                      ((opcode==7'b0110011 && func3==3'b101 && func7 == 7'b0100000) || (opcode==7'b0010011 && func3==3'b101 && func7==7'b0100000))? `ALU_ARI_RIGHT_MOVE://R sra I srai
+                      ((opcode==7'b0110011 && func3==3'b110) || (opcode==7'b0010011 && func3==3'b110))? `ALU_OR://R or I ori
+                      ((opcode==7'b0110011 && func3==3'b111) || (opcode==7'b0010011 && func3==3'b111))? `ALU_AND://R and I andi
+                      (opcode==7'b0010111)? `ALU_auipc_LEFT_MOVE_ADD://U auipc
+                      (opcode==7'b1100011 && func3==3'b000)? `ALU_COMPARE_E_ZERO://B beq
+                      (opcode==7'b1100011 && func3==3'b001)? `ALU_COMPARE_UNE_ZERO://B bne
+                      (opcode==7'b1100011 && func3==3'b101)? `ALU_COMPARE_BIGE_ZERO://B bge
+                      (opcode==7'b1100011 && func3==3'b111)? `ALU_COMPARE_UNS_BIGE_ZERO://B bgeu
+                      0;
+
+    assign alu_src = ((opcode==7'b0110011) || (opcode==7'b1100011))?1'b0://所有R型指令,所有B型指令
+                     ((opcode==7'b0110111) || (opcode==7'b0010111) || (opcode==7'b1101111) || (opcode==7'b1100111) || (opcode==7'b0000011) || (opcode==7'b0100011) || (opcode==7'b0010011));//U lui U auipc J jal I jalr 所有的载入指令（I l）所有的存储指令(S s) 所有的I型运算指令
+
+    assign immwho  = ((opcode==7'b0110111) || (opcode==7'b0010111))? `UimmU://U lui
+                     (opcode==7'b1101111)? `UimmJ://J jal
+                     ((opcode==7'b1100111) || (opcode==7'b0000011) || (opcode==7'b0010011))? `UimmI://I jalr 所有的I型加载指令(I l)
+                     (opcode==7'b0100011)? `UimmS://所有的S型指令
+                     0;
+
+    assign b_pc    = (opcode==7'b1100011);//所有B型指令
+
+    assign reg_wr_en = (opcode==7'b0110011) || (opcode==7'b0110111) || (opcode==7'b0010111) || (opcode==7'b1101111) || (opcode==7'b1100111) || (opcode==7'b0000011) || (opcode==7'b0010011);//所有R型指令 U lui U auipc J jal I jalr 所有的I型load指令 所有的I型运算指令
+
+    assign reg_data_from = (opcode==7'b0000011);//所有的I型load指令
+
+    assign jump = (opcode==7'b1101111) || (opcode==7'b1100111) || (opcode==7'b1100011);//J jal I jalr 所有B型指令
+
+    assign reg_rst = (opcode==7'b0110011 && func3==3'b010) || (opcode==7'b0110011 && func3==3'b011) || (opcode==7'b0010011 && func3==3'b010) || (opcode==7'b0010011 && func3==3'b011); //R slt R sltu I slti I sltiu
+
+    assign sign_ext = (opcode==7'b0000011 && func3==3'b000) || (opcode==7'b0000011 && func3==3'b001) || (opcode==7'b0000011 && func3==3'b010);//I lb I lh I lw（剩下的lbu等不必写）
+
+    assign size = ((opcode==7'b0000011 && func3==3'b000) || (opcode==7'b0000011 && func3==3'b100) || (opcode==7'b0100011 && func3==3'b000))? `byte://I lb I lbu S sb
+                  ((opcode==7'b0000011 && func3==3'b001) || (opcode==7'b0000011 && func3==3'b101) || (opcode==7'b0100011 && func3==3'b001))? `halfword://I lh I lhu S sh
+                  ((opcode==7'b0000011 && func3==3'b010) || (opcode==7'b0100011 && func3==3'b010))? `word://I lw S sw
+                  0;
+
+    assign wr_en = (opcode==7'b0100011);//所有S型指令
+
+    assign rd_en = (opcode==7'b0000011);//所有的I型load指令
+    
+
+
 
 
 endmodule
