@@ -20,6 +20,7 @@ module Newcell_top(
     wire wr_en;
     wire rd_en;
     wire [31:0] mem_write_data;
+    reg [2:0] control_status;
 
 
 
@@ -33,11 +34,12 @@ module Newcell_top(
         .mem_in_instr(mem_in_instr),
         .instr_addr(instr_addr),
         .mem_addr(mem_addr),
-        .sign_ext(sign_ext),
-        .wr_en(wr_en),
-        .rd_en(rd_en),
+        .sign_ext_reg(sign_ext),
+        .wr_en_reg(wr_en),
+        .rd_en_reg(rd_en),
         .mem_write_data(mem_write_data),
-        .size(size)
+        .size_reg(size),
+        .control_status(control_status)
     );
 
     //这里是指令存储器的例化部分
@@ -55,7 +57,8 @@ module Newcell_top(
         .sign_ext(sign_ext),
         .addr(mem_addr),
         .in_data(mem_write_data),
-        .out_data(mem_in_data)
+        .out_data(mem_in_data),
+        .control_status(control_status)
     );
 
     //这里是顶层模块的运行逻辑部分

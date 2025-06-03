@@ -37,4 +37,10 @@
 `define UimmU                    3'b011
 `define UimmJ                    3'b100 
 
+`define IF                       3'b000
+`define ID                       3'b001
+`define EX                       3'b010
+`define MEM                      3'b011
+`define WB                       3'b100
+
 `endif
