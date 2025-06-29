@@ -1,5 +1,3 @@
-`include "define.v"
-
 module regfile(
     input clk,//这里设计的是异步读，同步写
     input [4:0] in_rs1,
@@ -7,7 +5,6 @@ module regfile(
     input [4:0] rd,
     input [31:0] wr_data,
     input wr_en,
-    input [2:0] control_status,
     output [31:0] out_rs1,
     output [31:0] out_rs2
 );
@@ -25,12 +22,9 @@ module regfile(
     always@(clk)
     begin
         rf[0] <= 0;
-        if(control_status==`WB)
+        if(wr_en && rd!=0)
         begin
-            if(wr_en && rd!=0)
-         begin
-             rf[rd] <= wr_data;
-          end
+            rf[rd] <= wr_data;
         end
     end
 

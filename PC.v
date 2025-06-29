@@ -1,13 +1,11 @@
-`include "define.v"
-
 module pc(
     input clk,
     input rst,
     input jump,
     input [31:0] sext_offset,
     input zero,
-    input [2:0] control_status,
     input [31:0] jump_pc,//这里的虚实地址映射采用相等的算法，等到后期拓展了TLB之后会修正虚实地址的映射。
+    input WAB_pause,
     output reg [31:0] pc,
     output [31:0] pc_next
 );
@@ -24,24 +22,24 @@ module pc(
         end
         else
         begin
-            if(control_status==`IF)
+            if(WAB_pause==1'b0)
             begin
-             if(jump)
-              begin
-                  if(zero)
-                  begin
-                       pc <= branch_pc;
-                   end
-                  else
-                  begin
-                      pc<=jump_pc;
-                   end
-               end
-               else
-               begin
-                  pc<=pc_next;
-              end
-             end
+            if(jump)
+            begin
+                if(zero)
+                begin
+                    pc <= branch_pc;
+                end
+                else
+                begin
+                    pc<=jump_pc;
+                end
+            end
+            else
+            begin
+                pc<=pc_next;
+            end
+            end
         end
     end
 endmodule
